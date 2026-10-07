@@ -1,0 +1,1313 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<title>Allion Health Monitor</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<style>
+/* Barlow (SIL Open Font License) is bundled so the dashboard works offline in the car */
+@font-face { font-family: "Barlow"; font-weight: 400; font-display: swap; src: url("fonts/barlow-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 500; font-display: swap; src: url("fonts/barlow-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 600; font-display: swap; src: url("fonts/barlow-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow"; font-weight: 700; font-display: swap; src: url("fonts/barlow-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Semi Condensed"; font-weight: 500; font-display: swap; src: url("fonts/barlow-semi-condensed-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Semi Condensed"; font-weight: 600; font-display: swap; src: url("fonts/barlow-semi-condensed-latin-600-normal.woff2") format("woff2"); }
+/* Layout: one phone-first column; a warning-lamp cluster summarises each system, the fix list carries the detail. */
+:root {
+  color-scheme: light;
+  --page: #f2f3f1;
+  --surface: #fcfcfb;
+  --surface-2: #f5f6f5;
+  --ink: #19222a;
+  --ink-2: #4d5964;
+  --muted: #7f8a93;
+  --line: #dee2e4;
+  --line-strong: #c5cbd0;
+  --accent: #2a78d6;
+  --accent-ink: #1c5cab;
+  --accent-wash: rgba(42, 120, 214, 0.10);
+  --mark-muted: #b4bcc3;
+  --band: rgba(12, 163, 12, 0.10);
+  --lamp-off: #b9c0c6;
+  --crit: #d03b3b;
+  --serious: #ec835a;
+  --warn: #fab219;
+  --good: #0ca30c;
+  --watch: #2a78d6;
+  --good-ink: #006300;
+  --crit-ink: #a52a2a;
+  --radius-l: 18px;
+  --radius-m: 12px;
+  --radius-s: 8px;
+  --font: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-num: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0e1317;
+    --surface: #161d23;
+    --surface-2: #1b232a;
+    --ink: #eaf0f4;
+    --ink-2: #a9b5bf;
+    --muted: #7b8893;
+    --line: #253039;
+    --line-strong: #34414b;
+    --accent: #3987e5;
+    --accent-ink: #86b6ef;
+    --accent-wash: rgba(57, 135, 229, 0.14);
+    --mark-muted: #4b5862;
+    --band: rgba(12, 163, 12, 0.14);
+    --lamp-off: #43505a;
+    --good-ink: #0ca30c;
+    --crit-ink: #ff8a80;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0e1317;
+  --surface: #161d23;
+  --surface-2: #1b232a;
+  --ink: #eaf0f4;
+  --ink-2: #a9b5bf;
+  --muted: #7b8893;
+  --line: #253039;
+  --line-strong: #34414b;
+  --accent: #3987e5;
+  --accent-ink: #86b6ef;
+  --accent-wash: rgba(57, 135, 229, 0.14);
+  --mark-muted: #4b5862;
+  --band: rgba(12, 163, 12, 0.14);
+  --lamp-off: #43505a;
+  --good-ink: #0ca30c;
+  --crit-ink: #ff8a80;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.45; }
+button, input, select { font: inherit; color: inherit; }
+a { color: var(--accent-ink); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.wrap { max-width: 780px; margin: 0 auto; padding: 0 16px calc(92px + env(safe-area-inset-bottom)); }
+.muted { color: var(--muted); }
+.ink2 { color: var(--ink-2); }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* header */
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0 12px; }
+.car-name { font-weight: 700; font-size: 21px; line-height: 1.15; letter-spacing: -0.01em; margin: 0; }
+.car-spec { color: var(--ink-2); font-size: 14px; }
+.hdr-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+.pill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 14px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.pill .led { width: 9px; height: 9px; border-radius: 50%; background: var(--lamp-off); }
+.pill[data-s="live"] .led { background: var(--good); box-shadow: 0 0 6px var(--good); }
+.pill[data-s="warn"] .led { background: var(--warn); }
+.pill[data-s="bad"] .led { background: var(--crit); }
+.icon-btn { display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); cursor: pointer; color: var(--ink-2); }
+
+/* navigation: bottom bar on phones, top bar on wide screens */
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--surface); border-top: 1px solid var(--line); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
+nav.tabs button { appearance: none; background: none; border: 0; border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 2px 5px; font-size: 12.5px; font-weight: 500; color: var(--muted); cursor: pointer; min-height: 52px; position: relative; }
+nav.tabs button[aria-selected="true"] { color: var(--accent-ink); background: var(--accent-wash); }
+nav.tabs .badge { position: absolute; top: 5px; left: calc(50% + 8px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--crit); color: #fff; font-size: 11px; line-height: 16px; font-weight: 600; }
+@media (min-width: 760px) {
+  nav.tabs { position: sticky; top: env(safe-area-inset-top, 0px); bottom: auto; display: flex; gap: 4px; border: 0; border-bottom: 1px solid var(--line); background: var(--page); padding: 6px 0; margin: 0 0 18px; }
+  nav.tabs button { flex-direction: row; gap: 8px; padding: 8px 14px; font-size: 15px; min-height: 40px; }
+  nav.tabs .badge { position: static; }
+  .wrap { padding-bottom: 48px; }
+}
+h2 { font-size: 21px; line-height: 1.2; margin: 28px 0 10px; letter-spacing: -0.01em; }
+h2 .sub { display: block; font-size: 14px; font-weight: 400; color: var(--ink-2); letter-spacing: 0; margin-top: 2px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-l); }
+.pad { padding: 16px; }
+
+/* verdict + warning-lamp cluster */
+.verdict { position: relative; overflow: hidden; padding: 18px 18px 16px 24px; }
+.verdict::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 6px; background: var(--c, var(--good)); }
+.verdict .word { font-size: clamp(32px, 8.5vw, 42px); font-weight: 700; line-height: 1.02; letter-spacing: -0.025em; margin: 0; }
+.verdict .line { font-size: 17px; margin: 8px 0 0; max-width: 60ch; }
+.verdict .when { font-size: 13.5px; color: var(--muted); margin-top: 8px; }
+.lamps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 16px; }
+@media (min-width: 560px) { .lamps { grid-template-columns: repeat(8, 1fr); } }
+.lamp { appearance: none; border: 1px solid var(--line); background: var(--surface-2); border-radius: 12px; padding: 10px 2px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--lamp-off); cursor: pointer; min-height: 72px; }
+.lamp svg.i { width: 28px; height: 28px; stroke-width: 1.7; }
+.lamp .lbl { font-size: 12px; color: var(--muted); line-height: 1.1; text-align: center; }
+.lamp[data-lit="1"] { border-color: transparent; background: color-mix(in srgb, var(--c) 13%, var(--surface)); }
+.lamp[data-lit="1"] svg.i { color: var(--c); filter: drop-shadow(0 0 4px var(--c)); }
+.lamp[data-lit="1"] .lbl { color: var(--ink); font-weight: 500; }
+.lamp[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 1px; }
+.notes { display: grid; gap: 8px; margin-top: 12px; }
+.note { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--radius-m); background: var(--surface); border: 1px solid var(--line); font-size: 15px; }
+.note svg.i { color: var(--c, var(--muted)); margin-top: 1px; }
+.note b { display: block; font-weight: 600; }
+
+/* fix list */
+.filter-chip { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 10px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 10px 5px 12px; font-size: 14px; cursor: pointer; }
+.fixlist { overflow: hidden; }
+.fix { display: grid; grid-template-columns: 4px 30px 1fr; column-gap: 12px; padding: 16px 16px 16px 0; border-top: 1px solid var(--line); }
+.fix:first-child { border-top: 0; }
+.fix.trend { grid-template-columns: 4px 1fr; }
+.fix .tdetail { margin: 6px 0 0; font-size: 15px; color: var(--ink-2); max-width: 72ch; }
+.fix .rail { background: var(--c); border-radius: 0 3px 3px 0; }
+.fix .n { font-family: var(--font-num); font-weight: 600; font-size: 22px; color: var(--ink-2); text-align: right; line-height: 1.15; }
+.fix h3 { margin: 0; font-size: 18px; line-height: 1.25; font-weight: 600; }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; font-size: 14px; color: var(--ink-2); }
+.urg { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ink); }
+.urg i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); flex: none; }
+.why { margin: 10px 0 0; padding: 0; list-style: none; font-size: 15px; color: var(--ink-2); }
+.why li { padding-left: 15px; position: relative; margin: 4px 0; max-width: 72ch; }
+.why b.lead { font-weight: 600; color: var(--ink); }
+.why li::before { content: ""; position: absolute; left: 2px; top: 0.62em; width: 5px; height: 5px; border-radius: 50%; background: var(--muted); }
+.based { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.early { font-size: 14px; color: var(--good-ink); margin-top: 6px; }
+details.how { margin-top: 10px; }
+details.how summary { cursor: pointer; font-weight: 600; font-size: 15px; color: var(--accent-ink); list-style: none; display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; }
+details.how summary::-webkit-details-marker { display: none; }
+details.how summary svg.i { width: 16px; height: 16px; transition: transform .15s; }
+details.how[open] summary svg.i { transform: rotate(180deg); }
+.how-body { font-size: 15px; padding: 6px 0 2px; }
+.how-body h4 { margin: 10px 0 4px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.how-body ol, .how-body ul { margin: 0; padding-left: 20px; }
+.how-body li { margin: 3px 0; max-width: 72ch; }
+.how-body p { margin: 4px 0; max-width: 72ch; }
+.empty { padding: 28px 20px; text-align: center; color: var(--ink-2); }
+.empty b { display: block; color: var(--ink); font-size: 18px; margin-bottom: 4px; }
+
+/* symptom checker */
+.symbox { margin-top: 24px; }
+.symbox > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-l); }
+.symbox > summary::-webkit-details-marker { display: none; }
+.symbox > summary b { display: block; font-size: 18px; }
+.symbox > summary .sub { display: block; font-size: 14px; color: var(--ink-2); margin-top: 2px; }
+.symbox[open] > summary { border-radius: var(--radius-l) var(--radius-l) 0 0; border-bottom-color: transparent; }
+.symbox[open] > summary svg.i { transform: rotate(180deg); }
+.symbox > .panel { border-top: 0; border-radius: 0 0 var(--radius-l) var(--radius-l); }
+.sym-groups { display: grid; gap: 14px; }
+.sym-group h4 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { appearance: none; border: 1px solid var(--line-strong); background: var(--surface); border-radius: 999px; padding: 7px 13px; font-size: 14.5px; cursor: pointer; text-align: left; line-height: 1.25; }
+.chip[aria-pressed="true"] { background: var(--accent-wash); border-color: var(--accent); color: var(--accent-ink); font-weight: 500; }
+.row-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.btn { white-space: nowrap; appearance: none; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); border-radius: 10px; padding: 9px 16px; font-weight: 600; font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.danger { color: var(--crit-ink); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.cause { padding: 12px 0; border-top: 1px solid var(--line); }
+.cause:first-of-type { border-top: 0; }
+.cause-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.cause-head b { font-weight: 600; }
+.lk-track { height: 10px; border-radius: 5px; background: var(--surface-2); margin: 8px 0 6px; overflow: hidden; }
+.lk-bar { height: 100%; border-radius: 0 5px 5px 0; background: var(--mark-muted); }
+.cause.top .lk-bar { background: var(--accent); }
+.cause p { margin: 3px 0; font-size: 14.5px; color: var(--ink-2); max-width: 72ch; }
+.sym-result h3 { font-size: 17px; margin: 0 0 4px; }
+
+/* live tab */
+.alert { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--radius-m); margin-bottom: 10px; background: color-mix(in srgb, var(--c) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c) 45%, var(--line)); }
+.alert svg.i { color: var(--c); width: 26px; height: 26px; }
+.alert b { display: block; font-size: 17px; }
+.trip-strip { display: flex; flex-wrap: wrap; gap: 4px 22px; align-items: baseline; padding: 12px 16px; margin-bottom: 12px; }
+.trip-strip .k { font-size: 13px; color: var(--muted); }
+.trip-strip .v { font-family: var(--font-num); font-weight: 600; font-size: 20px; font-variant-numeric: tabular-nums; }
+.gauges { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 640px) { .gauges { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.g { padding: 12px 14px 10px; border-radius: var(--radius-m); }
+.g .lbl { font-size: 14px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.g .valrow { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.g .val { font-family: var(--font-num); font-weight: 600; font-size: 30px; line-height: 1.1; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.g .val small { font-size: 15px; font-weight: 500; color: var(--ink-2); margin-left: 3px; }
+.g .state { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.g .state i { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--lamp-off)); }
+.g .range { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+.meter { position: relative; height: 8px; border-radius: 4px; background: var(--surface-2); margin: 8px 0 4px; box-shadow: inset 0 0 0 1px var(--line); }
+.meter .band { position: absolute; top: 0; bottom: 0; background: var(--band); border-radius: 4px; }
+.meter .mk { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--c, var(--accent)); box-shadow: 0 0 0 2px var(--surface); transition: left .4s ease; }
+.spark { display: block; width: 100%; height: 30px; margin-top: 4px; }
+.sound-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; font-size: 14.5px; color: var(--ink-2); }
+
+/* codes tab */
+.mil { display: flex; align-items: center; gap: 14px; }
+.mil .lampbig { width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center; background: var(--surface-2); color: var(--lamp-off); flex: none; }
+.mil .lampbig svg.i { width: 32px; height: 32px; }
+.mil[data-on="1"] .lampbig { background: color-mix(in srgb, var(--warn) 18%, var(--surface)); color: #d49000; }
+.mil[data-on="1"] .lampbig svg.i { filter: drop-shadow(0 0 5px var(--warn)); }
+.mil b { font-size: 18px; display: block; }
+.code { padding: 14px 16px; border-top: 1px solid var(--line); }
+.code:first-child { border-top: 0; }
+.code-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.code-id { font-family: var(--font-num); font-weight: 600; font-size: 19px; padding: 2px 9px; border-radius: 7px; background: var(--surface-2); border: 1px solid var(--line); letter-spacing: 0.02em; }
+.kind { font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.kind i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.code p { margin: 6px 0 0; }
+table.t { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+table.t th, table.t td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+table.t th { font-weight: 600; color: var(--ink-2); font-size: 13.5px; border-top: 0; }
+table.t td.r, table.t th.r { text-align: right; font-variant-numeric: tabular-nums; }
+.scroll-x { overflow-x: auto; }
+.ready { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.ready div { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: 14.5px; }
+.ready svg.i { width: 18px; height: 18px; }
+.ready .ok svg.i { color: var(--good); }
+.ready .no svg.i { color: var(--muted); }
+dl.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; font-size: 14.5px; }
+dl.kv dt { color: var(--ink-2); }
+dl.kv dd { margin: 0; overflow-wrap: anywhere; }
+
+/* charts */
+figure.chart { margin: 0; padding: 14px 14px 10px; position: relative; }
+figure.chart figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+figure.chart .t1 { font-weight: 600; font-size: 15.5px; }
+figure.chart .t2 { font-size: 13px; color: var(--muted); }
+figure.chart svg.plot { display: block; width: 100%; overflow: visible; touch-action: pan-y; }
+.charts { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 700px) { .charts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.axis text { fill: var(--muted); font-size: 11px; font-family: var(--font); font-variant-numeric: tabular-nums; }
+.grid line { stroke: var(--line); stroke-width: 1; }
+.tip { position: absolute; pointer-events: none; z-index: 5; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 7px 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 110px; }
+.tip .tv { font-weight: 600; font-size: 15px; font-family: var(--font-num); }
+.tip .tr { display: flex; align-items: center; gap: 6px; }
+.tip .key { width: 12px; height: 2px; border-radius: 1px; flex: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--ink-2); margin: 6px 0 2px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .key { width: 14px; height: 2px; border-radius: 1px; }
+.chart-foot { display: flex; justify-content: space-between; gap: 4px 12px; align-items: baseline; flex-wrap: wrap; }
+.tbl-toggle { white-space: nowrap;  appearance: none; border: 0; background: none; color: var(--accent-ink); font-size: 13px; cursor: pointer; padding: 2px 0; }
+
+/* service */
+.svc { padding: 14px 16px; border-top: 1px solid var(--line); display: grid; gap: 4px; }
+.svc:first-child { border-top: 0; }
+.svc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.svc-head b { font-size: 16.5px; font-weight: 600; }
+.svc .prog { height: 6px; border-radius: 3px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; margin: 6px 0 2px; }
+.svc .prog div { height: 100%; background: var(--c, var(--accent)); border-radius: 0 3px 3px 0; }
+.svc .small { font-size: 14px; color: var(--ink-2); }
+.svc-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 16px; margin-top: 6px; }
+.svc-actions details.how { margin-top: 4px; flex: 1 1 200px; }
+.odo { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.odo .big { font-family: var(--font-num); font-weight: 600; font-size: 34px; line-height: 1.05; }
+
+/* drive view */
+#drive { position: fixed; inset: 0; z-index: 60; background: var(--page); display: flex; flex-direction: column; padding: calc(20px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom)); gap: 16px; }
+#drive .status { display: flex; align-items: center; gap: 16px; }
+#drive .bigdot { width: 48px; height: 48px; border-radius: 50%; background: var(--c); box-shadow: 0 0 18px var(--c); flex: none; }
+#drive .status b { font-size: 28px; line-height: 1.1; display: block; }
+#drive .status span { font-size: 17px; color: var(--ink-2); }
+#drive .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; align-content: center; }
+#drive .pair .panel { padding: 18px; }
+#drive .pair .k { font-size: 17px; color: var(--ink-2); }
+#drive .pair .v { font-family: var(--font-num); font-weight: 600; font-size: clamp(44px, 14vw, 72px); line-height: 1; font-variant-numeric: tabular-nums; }
+#drive .pair .v small { font-size: 0.4em; font-weight: 500; color: var(--ink-2); }
+#drive .pair .s { font-size: 16px; margin-top: 6px; display: flex; gap: 6px; align-items: center; }
+#drive .pair .s i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+#drive .hint { font-size: 15px; color: var(--muted); text-align: center; }
+
+/* misc */
+#toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 70; background: var(--ink); color: var(--page); padding: 10px 16px; border-radius: 10px; font-size: 14.5px; max-width: calc(100vw - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.2); }
+dialog { border: 1px solid var(--line); border-radius: var(--radius-l); background: var(--surface); color: var(--ink); padding: 20px; width: min(440px, calc(100vw - 32px)); }
+dialog::backdrop { background: rgba(10, 15, 20, 0.45); }
+dialog h3 { margin: 0 0 8px; font-size: 19px; }
+dialog p { margin: 6px 0; color: var(--ink-2); font-size: 15px; }
+dialog label { display: block; font-size: 14px; color: var(--ink-2); margin: 12px 0 4px; }
+dialog input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); }
+.demo-banner { font-size: 13.5px; color: var(--ink-2); background: var(--accent-wash); border-radius: 10px; padding: 8px 12px; margin-bottom: 10px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header class="top">
+    <div>
+      <h1 class="car-name" id="carName">My Allion</h1>
+      <div class="car-spec" id="carSpec"></div>
+    </div>
+    <div class="hdr-actions">
+      <button class="pill" id="connPill" data-s="off" type="button"><span class="led"></span><span id="connText">Connecting</span></button>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch light or dark theme"></button>
+    </div>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="Sections" id="tabs"></nav>
+  <div id="demoBanner" class="demo-banner" hidden></div>
+  <main>
+    <section id="tab-fix" role="tabpanel" aria-labelledby="t-fix"></section>
+    <section id="tab-live" role="tabpanel" aria-labelledby="t-live" hidden></section>
+    <section id="tab-codes" role="tabpanel" aria-labelledby="t-codes" hidden></section>
+    <section id="tab-trends" role="tabpanel" aria-labelledby="t-trends" hidden></section>
+    <section id="tab-service" role="tabpanel" aria-labelledby="t-service" hidden></section>
+  </main>
+</div>
+<div id="drive" hidden aria-live="polite"></div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<dialog id="dlg"></dialog>
+<script>
+"use strict";
+/* ------------------------------------------------------------------ basics */
+const DEMO = window.__DEMO__ || null;
+const SVGNS = "http://www.w3.org/2000/svg";
+const S = {
+  token: "", state: null, report: null, history: [], trends: null, symptoms: null,
+  tab: "fix", system: null, picked: new Set(), symResults: null, open: new Set(),
+  driveDismissed: null, sound: false, seenAlerts: new Set(), lastReportTs: null, renderedReportTs: null,
+};
+const $ = (q, r = document) => r.querySelector(q);
+
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k === "text") el.textContent = v;
+    else if (k === "style") el.setAttribute("style", v);
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat(3)) {
+    if (kid === null || kid === undefined || kid === false) continue;
+    el.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+  }
+  return el;
+}
+function put(root, ...kids) { root.replaceChildren(...kids.flat(2).filter(k => k !== null && k !== undefined && k !== false)); }
+function sv(tag, attrs, ...kids) {
+  // CSS variables only work reliably in SVG through style, not presentation attributes
+  const el = document.createElementNS(SVGNS, tag);
+  const style = [];
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined) continue;
+    if ((k === "fill" || k === "stroke") && typeof v === "string" && v.includes("var(")) style.push(`${k}:${v}`);
+    else el.setAttribute(k, v);
+  }
+  if (style.length) el.setAttribute("style", style.join(";"));
+  for (const kid of kids.flat(3)) if (kid) el.append(kid);
+  return el;
+}
+
+/* ------------------------------------------------------------------ icons (drawn for this page) */
+const ICONS = {
+  engine: ["M9.5 6h4.5", "M11.75 6v3", "M6.5 9h9l2.5 2.5h1.5V10h1.5v7H19.5v-1.5H18L15.5 18H9l-2.5-2.5H5V13H3.5v-2.5H5V9z"],
+  ignition: ["M13.5 2.8 5.5 13.5h5.8l-1.2 7.7 8.4-11.1h-6z"],
+  air: ["M3 8.5h10.5a2.6 2.6 0 1 0-2.6-2.6", "M3 12.5h14.5a2.6 2.6 0 1 1-2.6 2.6", "M3 16.5h6.5"],
+  cooling: ["M12 3.5v9.2", "M9.6 14.6a2.4 2.4 0 1 0 4.8 0 2.4 2.4 0 0 0-4.8 0z", "M10 4.5v8.4M14 4.5v8.4", "M10 4.5a2 2 0 0 1 4 0", "M15.5 6.5h2.5M15.5 9.5h2.5", "M3.5 20.5c1.6-1.2 3.4-1.2 5 0s3.4 1.2 5 0 3.4-1.2 5 0"],
+  charging: ["M4 8h16a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 20 19H4a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 4 8z", "M6.5 8V6h3v2M14.5 8V6h3v2", "M6.5 13.5h3.5M8.25 11.75v3.5M14.5 13.5h3.5"],
+  emissions: ["M2.5 14.5h7v4h-7", "M9.5 16.5h2", "M14 13.5a2.2 2.2 0 1 1 3.4-2.3 2.4 2.4 0 1 1 1.2 4.6", "M13.5 18.5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0z", "M15.5 7.5a1.6 1.6 0 1 0 3.2 0 1.6 1.6 0 0 0-3.2 0z"],
+  gearbox: ["M6 5v14M12 5v14M18 5v7", "M6 12h12", "M4.8 5a1.2 1.2 0 1 0 2.4 0 1.2 1.2 0 0 0-2.4 0zM10.8 5a1.2 1.2 0 1 0 2.4 0 1.2 1.2 0 0 0-2.4 0zM16.8 5a1.2 1.2 0 1 0 2.4 0 1.2 1.2 0 0 0-2.4 0z"],
+  service: ["M14.6 5.4a4 4 0 0 0-5.3 5L3.6 16.1a1.6 1.6 0 0 0 0 2.3l2 2a1.6 1.6 0 0 0 2.3 0l5.7-5.7a4 4 0 0 0 5-5.3l-2.5 2.5-2.6-.6-.6-2.6z"],
+  check: ["M5 12.5l4.5 4.5L19 7.5"],
+  alert: ["M12 3.5 2.5 20h19z", "M12 9.5v5", "M12 17.3v.2"],
+  info: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M12 11v5.5", "M12 7.8v.2"],
+  wait: ["M7 3.5h10M7 20.5h10", "M8 3.5c0 4.5 8 4.5 8 8.5s-8 4-8 8.5", "M16 3.5c0 4.5-8 4.5-8 8.5s8 4 8 8.5"],
+  chevron: ["M6 9l6 6 6-6"],
+  refresh: ["M20 12a8 8 0 1 1-2.4-5.7", "M20 4.5v5h-5"],
+  sun: ["M12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9z", "M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"],
+  moon: ["M19.5 14.8A8 8 0 0 1 9.2 4.5a8 8 0 1 0 10.3 10.3z"],
+  auto: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M12 3v18", "M12 3a9 9 0 0 1 0 18z"],
+  live: ["M3 12h4l2.5-6 4 12 2.5-6H21"],
+  codes: ["M5 4.5h14v15H5z", "M8.5 9h7M8.5 12.5h7M8.5 16h4"],
+  trends: ["M3.5 19.5h17", "M4.5 16l5-5 3.5 3.5 6.5-7", "M15.5 7.5h4v4"],
+  fix: ["M8.5 5.5h11M8.5 12h11M8.5 18.5h11", "M4.5 5.5h.1M4.5 12h.1M4.5 18.5h.1"],
+};
+function icon(name, cls = "i") {
+  const el = sv("svg", { class: cls, viewBox: "0 0 24 24", "aria-hidden": "true", focusable: "false" });
+  for (const d of ICONS[name] || []) el.append(sv("path", { d }));
+  return el;
+}
+
+const SYSTEMS = [
+  ["Engine", "engine"], ["Ignition", "ignition"], ["Fuel & air", "air"], ["Cooling", "cooling"],
+  ["Charging", "charging"], ["Emissions", "emissions"], ["Transmission", "gearbox"], ["Service", "service"],
+];
+const SYS_SHORT = { "Fuel & air": "Fuel & air", "Transmission": "Gearbox" };
+const URG = {
+  4: { word: "Stop driving", c: "var(--crit)" }, 3: { word: "Fix this week", c: "var(--serious)" },
+  2: { word: "Fix soon", c: "var(--warn)" }, 1: { word: "Keep an eye on it", c: "var(--watch)" }, 0: { word: "All good", c: "var(--good)" },
+};
+const URG_SHORT = { 4: "Stop driving", 3: "Fix this week", 2: "Fix soon", 1: "Watch", 0: "OK" };
+const VERDICT = {
+  stop: [4, "Stop and check"], fix: [3, "Fix this week"], attention: [2, "Fix soon"], watch: [1, "Keep an eye on it"], good: [0, "All good"],
+};
+const CONF = { High: "Likely", Medium: "Probable", Low: "Possible" };
+const KIND_NAMES = { code: "fault code", live: "live data", selftest: "engine self-test", trend: "trend over trips", service: "service history", symptom: "what you reported" };
+
+/* ------------------------------------------------------------------ formatting */
+const nf = (v, d = 0) => (v === null || v === undefined || Number.isNaN(v)) ? "–" :
+  Number(v).toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d });
+function now() { return (S.state && S.state.now) || Date.now() / 1000; }
+function rel(ts) {
+  if (!ts) return "never";
+  const s = Math.max(0, now() - ts);
+  if (s < 45) return "just now";
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  const d = Math.round(s / 86400);
+  return d === 1 ? "yesterday" : `${d} days ago`;
+}
+const dshort = (ts) => new Date(ts * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const dlong = (ts) => new Date(ts * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+/* ------------------------------------------------------------------ data access */
+function initToken() {
+  const p = new URLSearchParams(location.search);
+  let t = p.get("t") || "";
+  try {
+    if (t) sessionStorage.setItem("amt", t); else t = sessionStorage.getItem("amt") || "";
+  } catch (e) { /* storage blocked */ }
+  if (p.get("t")) history.replaceState(null, "", location.pathname);
+  S.token = t;
+}
+async function api(path, opts = {}) {
+  if (DEMO) return demoApi(path, opts);
+  const res = await fetch(path, {
+    method: opts.method || "GET", cache: "no-store",
+    headers: Object.assign({ "X-Token": S.token }, opts.body ? { "Content-Type": "application/json" } : {}),
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  let data = {};
+  try { data = await res.json(); } catch (e) { /* not json */ }
+  if (!res.ok) throw new Error(data.error || `${res.status} ${res.statusText}`);
+  return data;
+}
+function toast(msg, ms = 3200) {
+  const t = $("#toast");
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, ms);
+}
+
+/* ------------------------------------------------------------------ demo mode (static preview) */
+let demoFrame = 0;
+function demoApi(path, opts) {
+  const d = DEMO;
+  if (path.startsWith("api/report")) return Promise.resolve(d.report);
+  if (path.startsWith("api/state")) return Promise.resolve(d.frames[demoFrame % d.frames.length].state);
+  if (path.startsWith("api/history")) return Promise.resolve(d.history);
+  if (path.startsWith("api/trends")) return Promise.resolve(d.trends);
+  if (path.startsWith("api/symptoms/check")) return Promise.resolve({ results: localSymptomCheck(opts.body.selected) });
+  if (path.startsWith("api/symptoms/save")) { d.savedSymptoms = opts.body.selected; return Promise.resolve({ ok: true, active: opts.body.selected }); }
+  if (path.startsWith("api/symptoms")) return Promise.resolve({ symptoms: d.symptomKB.map(s => ({ id: s.id, title: s.title, group: s.group })), active: d.savedSymptoms || [] });
+  return Promise.reject(new Error("This is a preview - connect the monitor to your car to do that."));
+}
+function localSymptomCheck(selected) {
+  const ev = DEMO.evidence || {};
+  const out = [];
+  for (const id of selected) {
+    const sym = DEMO.symptomKB.find(s => s.id === id);
+    if (!sym) continue;
+    const causes = sym.causes.map(c => {
+      let score = c.base; const sup = [], against = [];
+      for (const [tag, w] of Object.entries(c.boost || {})) {
+        const strength = tag.startsWith("sym:") ? (selected.includes(tag.slice(4)) ? 1 : 0) : (ev[tag] ? ev[tag].strength : 0);
+        if (!strength) continue;
+        score += w * strength;
+        const why = ev[tag] && ev[tag].reasons.length ? ev[tag].reasons[0] : tag;
+        (w > 0 ? sup : against).push(why);
+      }
+      const { boost, ...rest } = c;
+      return Object.assign(rest, { score: Math.max(score, 0.05), supported_by: sup, argued_against_by: against });
+    });
+    const total = causes.reduce((a, c) => a + c.score, 0) || 1;
+    causes.forEach(c => { c.likelihood = Math.round(100 * c.score / total); });
+    causes.sort((a, b) => b.score - a.score);
+    out.push({ id, title: sym.title, group: sym.group, causes });
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------ header, tabs, theme */
+const TABS = [["fix", "Fix list", "fix"], ["live", "Live", "live"], ["codes", "Codes", "codes"], ["trends", "Trends", "trends"], ["service", "Service", "service"]];
+function buildTabs() {
+  const nav = $("#tabs");
+  nav.replaceChildren(...TABS.map(([id, label, ic]) => h("button", {
+    type: "button", role: "tab", id: `t-${id}`, "aria-controls": `tab-${id}`, "aria-selected": String(S.tab === id),
+    onclick: () => showTab(id),
+  }, icon(ic), h("span", {}, label), h("span", { class: "badge", hidden: true, "data-badge": id }))));
+}
+function showTab(id) {
+  S.tab = id;
+  for (const [t] of TABS) {
+    $(`#tab-${t}`).hidden = t !== id;
+    $(`#t-${t}`).setAttribute("aria-selected", String(t === id));
+  }
+  render(id);
+  if (window.innerWidth >= 760) window.scrollTo({ top: 0 });
+}
+function render(id = S.tab) {
+  if (id === "fix") renderFix();
+  else if (id === "live") renderLive();
+  else if (id === "codes") renderCodes();
+  else if (id === "trends") renderTrends();
+  else if (id === "service") renderService();
+}
+const THEMES = ["auto", "light", "dark"];
+function applyTheme(t) {
+  if (t === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", t);
+  const b = $("#themeBtn");
+  b.replaceChildren(icon(t === "dark" ? "moon" : t === "light" ? "sun" : "auto"));
+  b.setAttribute("aria-label", `Theme: ${t}. Change theme`);
+  b.title = `Theme: ${t}`;
+  try { localStorage.setItem("amTheme", t); } catch (e) { /* ignore */ }
+  if (S.report) render();
+}
+function initTheme() {
+  let t = "auto";
+  try { t = localStorage.getItem("amTheme") || "auto"; } catch (e) { /* ignore */ }
+  applyTheme(t);
+  $("#themeBtn").addEventListener("click", () => {
+    const cur = document.documentElement.getAttribute("data-theme") || "auto";
+    applyTheme(THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length]);
+  });
+}
+function updateHeader() {
+  const st = S.state;
+  if (!st) return;
+  const v = st.vehicle || {};
+  $("#carName").textContent = v.name || "My Allion";
+  $("#carSpec").textContent = [v.chassis_code && v.chassis_code !== "unknown" ? v.chassis_code : null,
+    v.displacement_l ? `${nf(v.displacement_l, 1)} L ${v.engine || ""}`.trim() : v.engine, v.transmission].filter(Boolean).join(", ");
+  const pill = $("#connPill");
+  const map = { running: ["live", "Running"], engine_off: ["live", "Ignition on"], ignition_off: ["off", "Ignition off"],
+    no_adapter: ["bad", "No adapter"], connecting: ["warn", "Connecting"], starting: ["warn", "Starting"] };
+  let [s, text] = map[st.state] || ["warn", st.state];
+  if (st.source === "sim") text = `Sim: ${text.toLowerCase()}`;
+  pill.title = st.status_text || "";
+  if (S.streamDown) { s = "warn"; text = "Reconnecting"; }
+  pill.dataset.s = s;
+  $("#connText").textContent = text;
+  const n = (S.report && S.report.actions || []).filter(a => a.urgency >= 3).length;
+  const badge = document.querySelector('[data-badge="fix"]');
+  if (badge) { badge.hidden = !n; badge.textContent = n; }
+}
+function connectionDialog() {
+  const st = S.state || {};
+  const info = st.info || {};
+  dialog("Connection", [
+    h("p", { text: st.status_text || "" }),
+    h("dl", { class: "kv" },
+      h("dt", { text: "Adapter" }), h("dd", { text: info.adapter || "–" }),
+      h("dt", { text: "Link" }), h("dd", { text: info.transport || "–" }),
+      h("dt", { text: "Protocol" }), h("dd", { text: info.protocol_name || "–" }),
+      h("dt", { text: "Computers found" }), h("dd", { text: (info.ecus || []).map(e => ({ "7E8": "engine (7E8)", "7E9": "transmission (7E9)" }[e] || e)).join(", ") || "–" }),
+      h("dt", { text: "Readings available" }), h("dd", { text: info.supported_pids ? `${info.supported_pids.length} standard values` : "–" })),
+  ], [h("button", { class: "btn", type: "button", onclick: () => $("#dlg").close() }, "Close")]);
+}
+
+/* ------------------------------------------------------------------ dialog */
+function dialog(title, body, buttons) {
+  const d = $("#dlg");
+  d.replaceChildren(h("h3", { text: title }), ...body, h("div", { class: "row-btns" }, ...buttons));
+  if (!d.open) d.showModal();
+  return d;
+}
+
+/* ------------------------------------------------------------------ FIX tab */
+function renderFix() {
+  const root = $("#tab-fix");
+  const r = S.report;
+  if (!r) { root.replaceChildren(h("div", { class: "panel empty" }, h("b", { text: "Loading" }))); return; }
+  const [vu, vword] = VERDICT[r.status] || [0, "All good"];
+  const actions = r.actions || [];
+  const top = actions[0];
+  const more = actions.filter(a => a.urgency >= 2).length - 1;
+  const lineText = top ? (more > 0 ? `${top.title}, and ${more} more thing${more > 1 ? "s" : ""} to sort` : top.title)
+    : "Nothing needs attention. The monitor keeps learning what normal looks like for your car.";
+  const lamps = h("div", { class: "lamps", role: "group", "aria-label": "Systems" }, SYSTEMS.map(([name, ic]) => {
+    const sys = (r.systems || []).find(s => s.name === name) || { worst: 0 };
+    const lit = sys.worst > 0;
+    return h("button", {
+      type: "button", class: "lamp", "data-lit": lit ? "1" : "0", style: `--c:${URG[sys.worst].c}`,
+      "aria-pressed": String(S.system === name),
+      "aria-label": `${name}: ${lit ? URG_SHORT[sys.worst] : "no problems"}. Show only ${name} items`,
+      onclick: () => { S.system = S.system === name ? null : name; renderFix(); },
+    }, icon(ic), h("span", { class: "lbl", text: SYS_SHORT[name] || name }));
+  }));
+  const verdict = h("div", { class: "panel verdict", style: `--c:${URG[vu].c}` },
+    h("p", { class: "word", text: vword }),
+    h("p", { class: "line", text: lineText }),
+    h("div", { class: "when", text: `Updated ${rel(r.generated_ts)}` + (r.scan ? `, last full scan ${rel(r.scan.ts)}` : "") }),
+    lamps);
+  const noteList = (r.notes || []).filter(n => n.severity > 0);
+  const notes = !noteList.length ? null : h("div", { class: "notes" }, noteList.map(n =>
+    h("div", { class: "note", style: `--c:${URG[Math.min(4, n.severity)].c}` }, icon(n.severity >= 2 ? "alert" : "info"),
+      h("div", {}, h("b", { text: n.title }), h("span", { class: "ink2", text: n.detail })))));
+
+  const shown = S.system ? actions.filter(a => a.system === S.system) : actions;
+  const list = shown.length ? h("div", { class: "panel fixlist" }, shown.map(a => fixItem(a))) :
+    h("div", { class: "panel empty" }, h("b", { text: S.system ? `Nothing to fix in ${S.system.toLowerCase()}` : "Nothing to fix" }),
+      h("span", { text: S.system ? "Tap the lamp again to see everything." : "Drive normally with the monitor connected - it compares each trip with your car's own history." }));
+  const filter = S.system ? h("button", { class: "filter-chip", type: "button", onclick: () => { S.system = null; renderFix(); } },
+    `Showing ${S.system.toLowerCase()} only`, h("span", { "aria-hidden": "true", text: "×" })) : null;
+
+  put(root, verdict, notes,
+    h("h2", {}, "What to fix, in order", h("span", { class: "sub", text: "Most urgent first; cheaper checks before expensive parts." })),
+    filter, list, symptomSection());
+}
+function splitReason(e) {
+  // "Title: long detail. More detail." -> [title, first sentence]
+  const i = e.indexOf(": ");
+  if (i < 0 || i > 70) return [null, e];
+  const rest = e.slice(i + 2);
+  const m = rest.match(/^(.+?[.!?])(\s|$)/);
+  return [e.slice(0, i), m ? m[1] : rest];
+}
+function evidenceLine(e) {
+  const [lead, first] = splitReason(e);
+  if (!lead) return h("li", { text: e });
+  return h("li", { title: e }, h("b", { class: "lead", text: `${lead}: ` }), first);
+}
+function shortReason(e) { const [lead, first] = splitReason(e); return lead ? `${lead}: ${first}` : first; }
+function fixItem(a) {
+  const u = URG[a.urgency] || URG[1];
+  const id = `how-${a.id}`;
+  const kinds = (a.evidence_kinds || []).map(k => KIND_NAMES[k] || k);
+  const det = h("details", { class: "how", ontoggle: (e) => { e.target.open ? S.open.add(id) : S.open.delete(id); } },
+    h("summary", {}, "How to check and fix", icon("chevron")),
+    h("div", { class: "how-body" },
+      a.causes && a.causes.length ? [h("h4", { text: "Usual causes on this car" }), h("ul", {}, a.causes.map(c => h("li", { text: c })))] : null,
+      a.checks && a.checks.length ? [h("h4", { text: "Check" }), h("ol", {}, a.checks.map(c => h("li", { text: c })))] : null,
+      a.fix ? [h("h4", { text: "Fix" }), h("p", { text: a.fix })] : null,
+      a.drive ? [h("h4", { text: "Can I drive it?" }), h("p", { text: a.drive })] : null));
+  if (S.open.has(id)) det.open = true;
+  const hasHow = (a.checks && a.checks.length) || a.fix || a.drive || (a.causes && a.causes.length);
+  return h("article", { class: "fix", style: `--c:${u.c}` },
+    h("div", { class: "rail" }), h("div", { class: "n", text: a.rank }),
+    h("div", {},
+      h("h3", { text: a.title }),
+      h("div", { class: "meta" },
+        h("span", { class: "urg" }, h("i"), URG_SHORT[a.urgency]),
+        a.confidence ? h("span", { text: CONF[a.confidence] || a.confidence }) : null,
+        a.cost && a.cost !== "?" ? h("span", { text: a.cost_label || a.cost }) : null,
+        a.diy && a.diy !== "-" ? h("span", { text: a.diy }) : null),
+      h("ul", { class: "why" }, (a.evidence || []).slice(0, 4).map(evidenceLine)),
+      a.why_early ? h("div", { class: "early", text: `Caught early: ${a.why_early}` }) : null,
+      kinds.length ? h("div", { class: "based", text: `Based on ${kinds.join(", ")}` }) : null,
+      hasHow ? det : null));
+}
+
+/* symptom checker (inside the fix tab) */
+function symptomSection() {
+  const wrap = h("div", {});
+  const cat = (S.symptoms && S.symptoms.symptoms) || [];
+  if (!cat.length) return wrap;
+  const groups = {};
+  for (const s of cat) (groups[s.group] = groups[s.group] || []).push(s);
+  const active = new Set((S.symptoms && S.symptoms.active) || []);
+  const panel = h("div", { class: "panel pad" },
+    h("div", { class: "sym-groups" }, Object.entries(groups).map(([g, items]) => h("div", { class: "sym-group" },
+      h("h4", { text: g }),
+      h("div", { class: "chips" }, items.map(s => h("button", {
+        type: "button", class: "chip", "aria-pressed": String(S.picked.has(s.id)),
+        onclick: (e) => { S.picked.has(s.id) ? S.picked.delete(s.id) : S.picked.add(s.id); e.currentTarget.setAttribute("aria-pressed", String(S.picked.has(s.id))); },
+      }, s.title)))))),
+    h("div", { class: "row-btns" },
+      h("button", { class: "btn primary", type: "button", onclick: runSymptomCheck }, "Find likely causes"),
+      h("button", { class: "btn", type: "button", onclick: saveSymptoms }, "Add to my fix list"),
+      (S.picked.size || active.size) ? h("button", { class: "btn", type: "button", onclick: () => { S.picked.clear(); S.symResults = null; saveSymptoms(); } }, "Clear") : null),
+    active.size ? h("p", { class: "based", text: `On your fix list: ${[...active].map(id => (cat.find(c => c.id === id) || {}).title || id).join("; ")}` }) : null);
+  const box = h("details", { class: "symbox", ontoggle: (e) => { S.symOpen = e.target.open; } },
+    h("summary", {}, h("span", {}, h("b", { text: "Something feels, sounds or smells wrong?" }),
+      h("span", { class: "sub", text: "Pick what you notice. Causes are ranked using what the monitor has measured on your car." })), icon("chevron")),
+    panel);
+  if (S.symOpen || S.symResults || active.size) box.open = true;
+  wrap.append(box);
+  if (S.symResults) {
+    for (const res of S.symResults) {
+      wrap.append(h("div", { class: "panel pad sym-result", style: "margin-top:10px" },
+        h("h3", { text: res.title }),
+        res.causes.map((c, i) => h("div", { class: `cause${i === 0 ? " top" : ""}` },
+          h("div", { class: "cause-head" }, h("b", { text: c.title }), h("span", { class: "num", text: `${c.likelihood} %` })),
+          h("div", { class: "lk-track", role: "img", "aria-label": `${c.likelihood} percent likely` }, h("div", { class: "lk-bar", style: `width:${Math.max(3, c.likelihood)}%` })),
+          h("p", { text: `Check: ${c.check}` }),
+          c.fix && c.fix !== "-" ? h("p", { text: `Fix: ${c.fix}` }) : null,
+          c.supported_by && c.supported_by.length ? h("p", { class: "early", text: `Your car's data agrees. ${shortReason(c.supported_by[0])}` }) : null,
+          c.argued_against_by && c.argued_against_by.length ? h("p", { class: "based", text: `Less likely: ${shortReason(c.argued_against_by[0])}` }) : null))));
+    }
+  }
+  return wrap;
+}
+async function runSymptomCheck() {
+  if (!S.picked.size) { toast("Pick at least one thing you've noticed."); return; }
+  try {
+    const r = await api("api/symptoms/check", { method: "POST", body: { selected: [...S.picked] } });
+    S.symResults = r.results; renderFix();
+  } catch (e) { toast(e.message); }
+}
+async function saveSymptoms() {
+  try {
+    const r = await api("api/symptoms/save", { method: "POST", body: { selected: [...S.picked] } });
+    S.symptoms.active = r.active;
+    toast(r.active.length ? "Added to your fix list." : "Cleared.");
+    await loadReport(); renderFix();
+  } catch (e) { toast(e.message); }
+}
+
+/* ------------------------------------------------------------------ LIVE tab */
+const METERS = [
+  { key: "coolant", label: "Coolant", unit: "°C", min: 20, max: 120, normal: [80, 100], hot: 103, crit: 110, d: 0 },
+  { key: "battery", label: "Battery", unit: "V", min: 10, max: 16, d: 1, battery: true },
+  { key: "trim", label: "Fuel trim (total)", unit: "%", min: -30, max: 30, normal: [-8, 8], d: 0, derive: (s) => (s.stft ?? null) === null || (s.ltft ?? null) === null ? null : s.stft + s.ltft, signed: true },
+  { key: "ltft", label: "Long-term trim", unit: "%", min: -25, max: 25, normal: [-8, 8], d: 1, signed: true },
+  { key: "rpm", label: "Engine speed", unit: "rpm", min: 0, max: 6500, d: 0 },
+  { key: "speed", label: "Speed", unit: "km/h", min: 0, max: 160, d: 0 },
+  { key: "load", label: "Engine load", unit: "%", min: 0, max: 100, d: 0 },
+  { key: "maf", label: "Air flow", unit: "g/s", min: 0, max: 70, d: 1 },
+  { key: "throttle", label: "Throttle", unit: "%", min: 0, max: 100, d: 0 },
+  { key: "iat", label: "Intake air", unit: "°C", min: 0, max: 70, normal: [5, 50], d: 0 },
+  { key: "timing", label: "Timing advance", unit: "°", min: -10, max: 50, d: 1 },
+  { key: "o2s2_v", label: "Rear O2 sensor", unit: "V", min: 0, max: 1, normal: [0.45, 0.85], d: 2 },
+  { key: "o2s1_lambda", label: "Front A/F sensor", unit: "λ", min: 0.7, max: 1.3, normal: [0.97, 1.03], d: 3 },
+  { key: "cat_temp", label: "Catalyst", unit: "°C", min: 200, max: 1000, normal: [300, 880], d: 0 },
+  { key: "cvt_temp", label: "CVT fluid", unit: "°C", min: 20, max: 130, normal: [40, 105], d: 0 },
+];
+function meterValue(m, live) { return m.derive ? m.derive(live) : live[m.key]; }
+function meterState(m, v, live) {
+  if (v === null || v === undefined) return [null, ""];
+  if (m.battery) {
+    const running = (live.rpm || 0) > 400;
+    const lo = running ? 13.6 : 12.3, hi = running ? 14.9 : 12.9;
+    if (running && v < 12.8) return ["var(--crit)", "Not charging"];
+    if (running && v > 15.2) return ["var(--crit)", "Overcharging"];
+    if (v < lo) return ["var(--warn)", running ? "Low charge" : "Low"];
+    if (v > hi + (running ? 0 : 1.5)) return ["var(--warn)", "High"];
+    return ["var(--good)", running ? "Charging" : "Normal"];
+  }
+  if (m.crit && v >= m.crit) return ["var(--crit)", "Overheating"];
+  if (m.hot && v >= m.hot) return ["var(--serious)", "Hot"];
+  if (!m.normal) return [null, ""];
+  if (m.key === "coolant" && v < m.normal[0]) return ["var(--watch)", (live.rpm || 0) > 400 ? "Warming up" : "Cold"];
+  if (v < m.normal[0]) return ["var(--warn)", m.signed ? "Rich" : "Low"];
+  if (v > m.normal[1]) return ["var(--warn)", m.signed ? "Lean" : "High"];
+  return ["var(--good)", "Normal"];
+}
+function batteryBand(live) { return (live.rpm || 0) > 400 ? [13.6, 14.9] : [12.3, 12.9]; }
+let liveNodes = null;
+function renderLive() {
+  const root = $("#tab-live");
+  const live = (S.state && S.state.live) || {};
+  const cards = METERS.filter(m => m.key === "cvt_temp" ? live.cvt_temp !== undefined : (meterValue(m, live) !== undefined && meterValue(m, live) !== null) || ["coolant", "battery", "rpm", "speed"].includes(m.key));
+  liveNodes = {};
+  const grid = h("div", { class: "gauges" }, cards.map(m => {
+    const n = { val: h("span", { class: "v" }), state: h("span", { class: "state" }, h("i"), h("span")), band: h("div", { class: "band" }),
+      mk: h("div", { class: "mk" }), spark: sv("svg", { class: "spark", viewBox: "0 0 200 30", preserveAspectRatio: "none", "aria-hidden": "true" }), range: h("div", { class: "range" }) };
+    liveNodes[m.key] = n;
+    return h("div", { class: "panel g" },
+      h("div", { class: "lbl", text: m.label }),
+      h("div", { class: "valrow" }, h("div", { class: "val" }, n.val, h("small", { text: m.unit })), n.state),
+      h("div", { class: "meter", role: "img", "aria-label": `${m.label} position on its scale` }, n.band, n.mk),
+      n.range, n.spark);
+  }));
+  const alerts = h("div", { id: "liveAlerts" });
+  const trip = h("div", { class: "panel trip-strip", id: "tripStrip" });
+  const soundBtn = h("button", { class: "btn", type: "button", onclick: toggleSound }, S.sound ? "Alert sound on" : "Alert sound off");
+  const driveBtn = DEMO ? h("div", { class: "sound-row" }, h("span", { text: "While the car moves, the monitor switches to a simple view so you're not distracted." }),
+    h("button", { class: "btn", type: "button", onclick: () => { S.demoDrive = true; S.driveDismissed = null; updateDrive(); } }, "Show the driving view")) : null;
+  put(root, alerts, trip, grid,
+    h("div", { class: "sound-row" }, h("span", { text: "Beep and vibrate when something goes wrong while you drive." }), soundBtn), driveBtn,
+    h("p", { class: "based", text: "Readings refresh about every second while connected. Grey bands show the normal range." }));
+  updateLive();
+}
+function updateLive() {
+  if (!liveNodes || S.tab !== "live") return;
+  const st = S.state || {};
+  const live = st.live || {};
+  const al = $("#liveAlerts");
+  if (al) al.replaceChildren(...(st.alerts || []).map(a => h("div", { class: "alert", style: `--c:${URG[a.severity].c}` }, icon("alert"),
+    h("div", {}, h("b", { text: a.title }), h("span", { text: a.detail })))));
+  const ts = $("#tripStrip");
+  if (ts) {
+    const t = st.trip;
+    ts.replaceChildren(...(t ? [
+      kv("This trip", `${nf(t.km, 1)} km`), kv("Time", `${nf(t.minutes, 0)} min`), kv("Economy", t.km_per_l ? `${nf(t.km_per_l, 1)} km/L` : "–"),
+    ] : [kv("Status", st.status_text || "Waiting"), kv("Battery", live.battery ? `${nf(live.battery, 2)} V` : "–")]));
+  }
+  const hist = S.history.slice(-300);
+  for (const m of METERS) {
+    const n = liveNodes[m.key];
+    if (!n) continue;
+    const v = meterValue(m, live);
+    n.val.textContent = v === null || v === undefined ? "–" : (m.signed && v > 0 ? "+" : "") + nf(v, m.d);
+    const [c, word] = meterState(m, v, live);
+    n.state.style.setProperty("--c", c || "var(--lamp-off)");
+    n.state.lastChild.textContent = word;
+    n.state.hidden = !word;
+    const band = m.battery ? batteryBand(live) : m.normal;
+    const span = m.max - m.min;
+    if (band) {
+      n.band.style.left = `${Math.max(0, (band[0] - m.min) / span * 100)}%`;
+      n.band.style.width = `${Math.min(100, (band[1] - band[0]) / span * 100)}%`;
+      const dd = m.d > 1 ? 2 : m.d > 0 && !m.signed ? m.d : 0;
+      const sg = (x) => (m.signed && x > 0 ? "+" : "") + nf(x, dd);
+      n.range.textContent = `Normal ${sg(band[0])} to ${sg(band[1])} ${m.unit}`;
+    } else { n.band.style.width = "0"; n.range.textContent = `Scale ${nf(m.min)} to ${nf(m.max)} ${m.unit}`; }
+    if (v === null || v === undefined) n.mk.hidden = true;
+    else { n.mk.hidden = false; n.mk.style.left = `${Math.max(0, Math.min(100, (v - m.min) / span * 100))}%`; n.mk.style.setProperty("--c", c || "var(--accent)"); }
+    drawSpark(n.spark, hist.map(r => m.derive ? m.derive(r) : r[m.key]).filter(x => x !== null && x !== undefined), m);
+  }
+}
+function kv(k, v) { return h("div", {}, h("div", { class: "k", text: k }), h("div", { class: "v", text: v })); }
+function drawSpark(svg, vals, m) {
+  svg.replaceChildren();
+  if (vals.length < 2) return;
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  const minSpan = (m.max - m.min) * 0.12;
+  if (hi - lo < minSpan) { const mid = (hi + lo) / 2; lo = mid - minSpan / 2; hi = mid + minSpan / 2; }
+  const x = (i) => (i / (vals.length - 1)) * 196 + 2;
+  const y = (v) => 27 - ((v - lo) / (hi - lo || 1)) * 24;
+  const d = vals.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  svg.append(sv("path", { d, fill: "none", stroke: "var(--mark-muted)", "stroke-width": 2, "vector-effect": "non-scaling-stroke", "stroke-linejoin": "round", "stroke-linecap": "round" }));
+}
+function toggleSound(e) {
+  S.sound = !S.sound;
+  e.currentTarget.textContent = S.sound ? "Alert sound on" : "Alert sound off";
+  if (S.sound) beep(660, 0.12);
+}
+let actx = null;
+function beep(freq = 880, dur = 0.25) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.frequency.value = freq; o.connect(g); g.connect(actx.destination);
+    g.gain.setValueAtTime(0.15, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + dur);
+    o.start(); o.stop(actx.currentTime + dur);
+  } catch (e) { /* audio unavailable */ }
+}
+function handleAlerts() {
+  const alerts = (S.state && S.state.alerts) || [];
+  for (const a of alerts) {
+    if (!S.seenAlerts.has(a.id)) {
+      S.seenAlerts.add(a.id);
+      if (S.sound && a.severity >= 3) { beep(880, 0.3); setTimeout(() => beep(880, 0.3), 380); }
+      if (a.severity >= 3 && navigator.vibrate) navigator.vibrate([200, 120, 200]);
+    }
+  }
+  S.seenAlerts = new Set([...S.seenAlerts].filter(id => alerts.some(a => a.id === id)));
+}
+
+/* drive view: big, simple, only while moving */
+function updateDrive() {
+  const st = S.state || {};
+  const live = st.live || {};
+  const trip = st.trip;
+  const el = $("#drive");
+  const running = st.state === "running" && trip;
+  let show = running && S.driveDismissed !== trip.id && ((live.speed || 0) > 5 || !el.hidden);
+  if (DEMO && !S.demoDrive) show = false;
+  if (!show) { el.hidden = true; return; }
+  const alerts = st.alerts || [];
+  const worst = alerts.reduce((m, a) => Math.max(m, a.severity), 0);
+  const pending = ((S.report && S.report.actions) || []).filter(a => a.urgency >= 2).length;
+  const cool = live.coolant, batt = live.battery;
+  const [cc, cw] = meterState(METERS[0], cool, live);
+  const [bc, bw] = meterState(METERS[1], batt, live);
+  el.hidden = false;
+  el.replaceChildren(
+    h("div", { class: "status", style: `--c:${worst ? URG[worst].c : "var(--good)"}` }, h("div", { class: "bigdot" }),
+      h("div", {}, h("b", { text: worst ? alerts[0].title : "No warnings right now" }),
+        h("span", { text: worst ? alerts[0].detail : (pending ? `${pending} item${pending > 1 ? "s" : ""} on your fix list - look when you're parked.` : "Eyes on the road. Details are here when you stop.") }))),
+    h("div", { class: "pair" },
+      h("div", { class: "panel" }, h("div", { class: "k", text: "Coolant" }), h("div", { class: "v", text: cool === undefined ? "–" : nf(cool) + "°" }),
+        h("div", { class: "s", style: `--c:${cc || "var(--lamp-off)"}` }, h("i"), cw || "–")),
+      h("div", { class: "panel" }, h("div", { class: "k", text: "Battery" }), h("div", { class: "v" }, batt === undefined ? "–" : nf(batt, 1), h("small", { text: " V" })),
+        h("div", { class: "s", style: `--c:${bc || "var(--lamp-off)"}` }, h("i"), bw || "–"))),
+    h("button", { class: "btn", type: "button", style: "align-self:center", onclick: () => { S.driveDismissed = trip.id; S.demoDrive = false; el.hidden = true; } }, "I'm a passenger - show everything"),
+    h("div", { class: "hint", text: "This simple view appears while the car is moving." }));
+}
+
+/* ------------------------------------------------------------------ CODES tab */
+const KIND = { stored: ["var(--serious)", "Stored - check-engine light on"], pending: ["var(--warn)", "Pending - seen once, not confirmed yet"], permanent: ["var(--crit)", "Permanent - clears itself only after the repair is proven"] };
+function renderCodes() {
+  const root = $("#tab-codes");
+  const r = S.report || {};
+  const scan = r.scan;
+  if (!scan) {
+    root.replaceChildren(h("div", { class: "panel empty" }, h("b", { text: "No scan yet" }), h("span", { text: "Switch the ignition on with the adapter plugged in." }),
+      h("div", { class: "row-btns", style: "justify-content:center" }, h("button", { class: "btn primary", type: "button", onclick: scanNow }, icon("refresh"), "Scan now"))));
+    return;
+  }
+  const status = scan.status || {};
+  const dtcs = scan.dtcs || [];
+  const running = ((S.state && S.state.live) || {}).rpm > 0;
+  const mil = h("div", { class: "panel pad" },
+    h("div", { class: "mil", "data-on": status.mil ? "1" : "0" }, h("div", { class: "lampbig" }, icon("engine")),
+      h("div", {}, h("b", { text: status.mil ? "Check-engine light is on" : "Check-engine light is off" }),
+        h("span", { class: "ink2", text: `${dtcs.length ? dtcs.length + " code" + (dtcs.length > 1 ? "s" : "") : "No codes"}, scanned ${rel(scan.ts)}` }))),
+    h("div", { class: "row-btns" },
+      h("button", { class: "btn primary", type: "button", onclick: scanNow }, icon("refresh"), "Scan now"),
+      h("button", { class: "btn danger", type: "button", disabled: !dtcs.length || running ? true : null, title: running ? "Switch the engine off first" : "", onclick: clearCodes }, "Clear codes")));
+  const codes = dtcs.length ? h("div", { class: "panel" }, dtcs.map(d => {
+    const [c, label] = KIND[d.kind] || ["var(--warn)", d.kind];
+    const act = (r.actions || []).find(a => (a.evidence || []).some(e => e.startsWith(d.code)));
+    return h("div", { class: "code" },
+      h("div", { class: "code-head" }, h("span", { class: "code-id", text: d.code }), h("span", { class: "kind", style: `--c:${c}` }, h("i"), label)),
+      h("p", { text: d.description || "" }),
+      h("div", { class: "based", text: `From the ${d.ecu_label ? d.ecu_label.toLowerCase() : "engine"} computer` + (act ? `. On your fix list as #${act.rank}: ${act.title}` : "") }));
+  })) : h("div", { class: "panel empty" }, h("b", { text: "No fault codes" }), h("span", { text: "Pending codes appear here before the check-engine light comes on." }));
+
+  const parts = [mil, h("h2", { text: "Fault codes" }), codes];
+  const ff = scan.freeze || {};
+  if (ff.trigger_code) {
+    const rows = [["Coolant", ff.coolant, "°C"], ["Engine speed", ff.rpm, "rpm"], ["Speed", ff.speed, "km/h"], ["Engine load", ff.load, "%"],
+      ["Short-term fuel trim", ff.stft, "%"], ["Long-term fuel trim", ff.ltft, "%"], ["Air flow", ff.maf, "g/s"], ["Throttle", ff.throttle, "%"], ["Intake air", ff.iat, "°C"]]
+      .filter(x => x[1] !== undefined);
+    parts.push(h("h2", {}, `Snapshot when ${ff.trigger_code} was stored`, h("span", { class: "sub", text: "The conditions at the moment the fault was confirmed - useful for your mechanic." })),
+      h("div", { class: "panel scroll-x" }, h("table", { class: "t" }, h("tbody", {}, rows.map(([k, v, u]) => h("tr", {}, h("td", { text: k }), h("td", { class: "r", text: `${nf(v, Math.abs(v) < 10 && v % 1 ? 1 : 0)} ${u}` })))))));
+  }
+  const mis = scan.misfire && scan.misfire.per_cylinder;
+  if (mis && Object.keys(mis).length) {
+    parts.push(h("h2", {}, "Misfires counted by the engine computer", h("span", { class: "sub", text: "This drive, per cylinder. A healthy engine shows zeros; one tall bar points to that cylinder's coil or plug." })),
+      h("div", { class: "panel" }, misfireBars(mis)));
+  }
+  const tests = (scan.mode06 || []).filter(t => !t.misfire);
+  if (tests.length) {
+    parts.push(h("h2", {}, "Engine self-tests", h("span", { class: "sub", text: "The tests behind the check-engine light. A pass close to its limit is an early warning." })),
+      h("div", { class: "panel scroll-x" }, h("table", { class: "t" },
+        h("thead", {}, h("tr", {}, h("th", { text: "Test" }), h("th", { text: "Result" }), h("th", { text: "Closeness to limit" }))),
+        h("tbody", {}, tests.map(t => {
+          const u = t.usage;
+          const c = !t.passed ? "var(--crit)" : u !== null && u >= 0.9 ? "var(--serious)" : u !== null && u >= 0.8 ? "var(--warn)" : "var(--good)";
+          return h("tr", {},
+            h("td", { text: t.name }),
+            h("td", {}, h("span", { class: "kind", style: `--c:${c}` }, h("i"), t.passed ? "Pass" : "Fail")),
+            h("td", {}, u === null || u === undefined ? h("span", { class: "muted", text: "no limit" }) :
+              h("div", { style: "min-width:120px" }, h("div", { class: "meter", style: "margin:4px 0" }, h("div", { class: "mk", style: `left:${Math.min(100, u * 100)}%;--c:${c}` })),
+                h("span", { class: "based", text: `${nf(u * 100)} % of limit` }))));
+        })))));
+  }
+  const mons = status.monitors || {};
+  if (Object.keys(mons).length) {
+    const names = { misfire: "Misfire", fuel_system: "Fuel system", components: "Sensors and parts", catalyst: "Catalytic converter", heated_catalyst: "Heated catalyst",
+      evap: "Fuel vapour (EVAP)", secondary_air: "Secondary air", o2_sensor: "Oxygen sensors", o2_heater: "Oxygen sensor heaters", egr: "EGR", ac_refrigerant: "AC refrigerant" };
+    parts.push(h("h2", {}, "Self-test readiness", h("span", { class: "sub", text: "Complete means the test has run since codes were last cleared." })),
+      h("div", { class: "panel pad ready" }, Object.entries(mons).map(([k, m]) => h("div", { class: m.complete ? "ok" : "no" }, icon(m.complete ? "check" : "wait"),
+        h("span", {}, names[k] || k, h("span", { class: "sr", text: m.complete ? " complete" : " not complete" }))))));
+  }
+  const info = (S.state && S.state.info) || {};
+  const sinfo = scan.info || {};
+  parts.push(h("h2", { text: "About the connection" }), h("div", { class: "panel pad" }, h("dl", { class: "kv" },
+    h("dt", { text: "Adapter" }), h("dd", { text: info.adapter || "–" }),
+    h("dt", { text: "Protocol" }), h("dd", { text: info.protocol_name || "–" }),
+    h("dt", { text: "Standard" }), h("dd", { text: sinfo.obd_standard || "–" }),
+    h("dt", { text: "Since codes cleared" }), h("dd", { text: sinfo.distance_since_clear !== undefined ? `${nf(sinfo.distance_since_clear)} km, ${nf(sinfo.warmups_since_clear)} warm-ups` : "–" }),
+    h("dt", { text: "Air pressure" }), h("dd", { text: sinfo.baro ? `${sinfo.baro} kPa` : "–" }))));
+  root.replaceChildren(...parts);
+}
+async function scanNow() {
+  toast("Scanning the car...", 8000);
+  try { await api("api/scan", { method: "POST", body: {} }); await loadReport(); toast("Scan complete."); render(); }
+  catch (e) { toast(e.message, 5000); }
+}
+function clearCodes() {
+  const input = h("input", { id: "clearConfirm", type: "text", autocomplete: "off", "aria-label": "Type CLEAR to confirm" });
+  dialog("Clear fault codes?", [
+    h("p", { text: "This also erases the freeze-frame snapshot and resets the self-tests. Only clear codes after the fault is fixed - your mechanic may need them." }),
+    h("p", { text: "Engine off, ignition on. Type CLEAR to confirm." }), input,
+  ], [
+    h("button", { class: "btn", type: "button", onclick: () => $("#dlg").close() }, "Cancel"),
+    h("button", { class: "btn danger", type: "button", onclick: async () => {
+      if (input.value.trim().toUpperCase() !== "CLEAR") { toast("Type CLEAR to confirm."); return; }
+      $("#dlg").close();
+      try { await api("api/clear-codes", { method: "POST", body: { confirm: "CLEAR" } }); await loadReport(); toast("Codes cleared."); render(); }
+      catch (e) { toast(e.message, 5000); }
+    } }, "Clear codes"),
+  ]);
+  setTimeout(() => input.focus(), 50);
+}
+
+/* ------------------------------------------------------------------ charts */
+function niceTicks(lo, hi, n = 4) {
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const raw = (hi - lo) / n;
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(m => m * p).find(s => s >= raw) || 10 * p;
+  const t0 = Math.floor(lo / step) * step, t1 = Math.ceil(hi / step) * step;
+  const out = [];
+  for (let t = t0; t <= t1 + step / 2; t += step) out.push(+t.toFixed(10));
+  return out;
+}
+function fmtTick(v, dec) {
+  if (v === 0) return "0";
+  if (dec !== undefined) return nf(v, dec);
+  const a = Math.abs(v); return a >= 1000 ? nf(v) : a >= 10 ? nf(v, 0) : a >= 1 ? nf(v, 1).replace(/\.0$/, "") : nf(v, 2);
+}
+const UNIT_DEC = { "V": 2, "%": 1, "ratio": 2, "± rpm": 0, "min": 1, "°C": 0, "km/L": 1, "count": 0 };
+function lineChart({ title, unit, series, band, height = 150, emphasis = null, note = "" }) {
+  const vdec = UNIT_DEC[unit];
+  // series: [{name, points:[[ts,v],...], emph:bool}]
+  const fig = h("figure", { class: "panel chart", tabindex: "0" });
+  const last = series[0].points[series[0].points.length - 1];
+  fig.append(h("figcaption", {}, h("span", { class: "t1", text: title }),
+    series.length === 1 && last ? h("span", { class: "t2", text: `Latest ${fmtTick(last[1], vdec)} ${unit === "ratio" ? "" : unit}`.trim() }) : h("span", { class: "t2", text: unit })));
+  if (series.length > 1) fig.append(h("div", { class: "legend" }, series.map(s => h("span", {}, h("i", { class: "key", style: `background:${s.color}` }), s.name))));
+  const svg = sv("svg", { class: "plot", role: "img", "aria-label": `${title} over recent trips` });
+  fig.append(svg);
+  const tip = h("div", { class: "tip", hidden: true });
+  fig.append(tip);
+  const tbl = h("div", { class: "scroll-x", hidden: true });
+  const toggle = h("button", { class: "tbl-toggle", type: "button", onclick: () => { tbl.hidden = !tbl.hidden; toggle.textContent = tbl.hidden ? "Show as table" : "Hide table"; } }, "Show as table");
+  fig.append(h("div", { class: "chart-foot" }, h("span", { class: "based", text: note }), toggle), tbl);
+  const xs = [...new Set(series.flatMap(s => s.points.map(p => p[0])))].sort((a, b) => a - b);
+  tbl.append(h("table", { class: "t" }, h("thead", {}, h("tr", {}, h("th", { text: "Trip" }), series.map(s => h("th", { class: "r", text: s.name })))),
+    h("tbody", {}, xs.map(x => h("tr", {}, h("td", { text: dlong(x) }), series.map(s => { const p = s.points.find(q => q[0] === x); return h("td", { class: "r", text: p ? fmtTick(p[1]) : "–" }); }))))));
+  const draw = () => {
+    const W = Math.max(240, fig.clientWidth - 28), H = height;
+    const m = { l: 38, r: emphasis ? 44 : 12, t: 8, b: 22 };
+    const vals = series.flatMap(s => s.points.map(p => p[1])).concat(band ? band : []);
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    const nonNeg = lo >= 0;
+    const pad = (hi - lo || Math.abs(hi) || 1) * 0.12; lo -= pad; hi += pad;
+    if (nonNeg && lo < 0) lo = 0;
+    const ticks = niceTicks(lo, hi, 3); lo = ticks[0]; hi = ticks[ticks.length - 1];
+    const step = ticks.length > 1 ? ticks[1] - ticks[0] : 1;
+    const tdec = step >= 1 && Number.isInteger(step) ? 0 : step >= 0.1 ? (Number.isInteger(step * 10) ? 1 : 2) : 2;
+    const x0 = xs[0], x1 = xs[xs.length - 1] === x0 ? x0 + 1 : xs[xs.length - 1];
+    const X = (t) => m.l + (t - x0) / (x1 - x0) * (W - m.l - m.r);
+    const Y = (v) => m.t + (1 - (v - lo) / (hi - lo)) * (H - m.t - m.b);
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("height", H);
+    svg.replaceChildren();
+    if (band) svg.append(sv("rect", { x: m.l, width: W - m.l - m.r, y: Y(band[1]), height: Math.max(0, Y(band[0]) - Y(band[1])), fill: "var(--band)" }));
+    svg.append(sv("g", { class: "grid" }, ticks.map(t => sv("line", { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t) }))));
+    svg.append(sv("g", { class: "axis" }, ticks.map(t => { const tx = sv("text", { x: m.l - 6, y: Y(t) + 4, "text-anchor": "end" }); tx.textContent = fmtTick(t, tdec); return tx; }),
+      [xs[0], xs[xs.length - 1]].filter((v, i, a) => i === 0 || v !== a[0]).map((t, i) => { const tx = sv("text", { x: X(t), y: H - 5, "text-anchor": i ? "end" : "start" }); tx.textContent = dshort(t); return tx; })));
+    const ordered = [...series].sort((a, b) => (a.emph ? 1 : 0) - (b.emph ? 1 : 0));
+    for (const s of ordered) {
+      const d = s.points.map((p, i) => `${i ? "L" : "M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
+      if (series.length === 1 && !band) svg.append(sv("path", { d: `${d}L${X(s.points[s.points.length - 1][0]).toFixed(1)},${Y(lo)}L${X(s.points[0][0]).toFixed(1)},${Y(lo)}Z`, fill: s.color, "fill-opacity": 0.1 }));
+      svg.append(sv("path", { d, fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+      const lp = s.points[s.points.length - 1];
+      if (s.emph || series.length === 1) svg.append(sv("circle", { cx: X(lp[0]), cy: Y(lp[1]), r: 4, fill: s.color, stroke: "var(--surface)", "stroke-width": 2 }));
+      if (s.emph && emphasis) { const tx = sv("text", { x: X(lp[0]) + 8, y: Y(lp[1]) + 4, fill: "var(--ink)", "font-size": 12, "font-weight": 600 }); tx.textContent = s.name; svg.append(tx); }
+    }
+    const cross = sv("line", { y1: m.t, y2: H - m.b, stroke: "var(--line-strong)", "stroke-width": 1, visibility: "hidden" });
+    const dot = sv("circle", { r: 4, fill: series[0].color, stroke: "var(--surface)", "stroke-width": 2, visibility: "hidden" });
+    svg.append(cross, dot);
+    const hit = sv("rect", { x: m.l, y: 0, width: W - m.l - m.r, height: H, fill: "transparent" });
+    svg.append(hit);
+    let idx = -1;
+    const showAt = (i) => {
+      idx = Math.max(0, Math.min(xs.length - 1, i));
+      const t = xs[idx];
+      cross.setAttribute("x1", X(t)); cross.setAttribute("x2", X(t)); cross.setAttribute("visibility", "visible");
+      const main = series.find(s => s.emph) || series[0];
+      const mp = main.points.find(p => p[0] === t);
+      if (mp) { dot.setAttribute("cx", X(t)); dot.setAttribute("cy", Y(mp[1])); dot.style.fill = main.color; dot.setAttribute("visibility", "visible"); }
+      tip.replaceChildren(h("div", { class: "muted", text: dlong(t) }), ...series.map(s => {
+        const p = s.points.find(q => q[0] === t);
+        return h("div", { class: "tr" }, series.length > 1 ? h("i", { class: "key", style: `background:${s.color}` }) : null,
+          h("span", { class: "tv", text: p ? `${fmtTick(p[1], vdec)}` : "–" }), h("span", { class: "muted", text: series.length > 1 ? s.name : unit }));
+      }));
+      tip.hidden = false;
+      const px = X(t) / W * svg.clientWidth + 14;
+      tip.style.left = `${Math.min(px + 8, fig.clientWidth - tip.offsetWidth - 8)}px`;
+      tip.style.top = `44px`;
+    };
+    const hide = () => { cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); tip.hidden = true; };
+    hit.addEventListener("pointermove", (e) => {
+      const r = svg.getBoundingClientRect();
+      const t = x0 + ((e.clientX - r.left) / r.width * W - m.l) / (W - m.l - m.r) * (x1 - x0);
+      let best = 0; for (let i = 1; i < xs.length; i++) if (Math.abs(xs[i] - t) < Math.abs(xs[best] - t)) best = i;
+      showAt(best);
+    });
+    hit.addEventListener("pointerleave", hide);
+    fig.onkeydown = (e) => {
+      if (e.key === "ArrowRight") { showAt(idx < 0 ? xs.length - 1 : idx + 1); e.preventDefault(); }
+      else if (e.key === "ArrowLeft") { showAt(idx < 0 ? xs.length - 1 : idx - 1); e.preventDefault(); }
+      else if (e.key === "Escape") hide();
+    };
+    fig.onblur = hide;
+  };
+  requestAnimationFrame(draw);
+  fig._draw = draw;
+  return fig;
+}
+function misfireBars(per) {
+  const cyls = Object.keys(per).map(Number).sort((a, b) => a - b);
+  const vals = cyls.map(c => per[c].current || 0);
+  const maxV = Math.max(...vals, 1);
+  const top = vals.indexOf(Math.max(...vals));
+  const W = 320, H = 150, m = { l: 12, r: 12, t: 22, b: 26 };
+  const svg = sv("svg", { class: "plot", viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Misfire counts per cylinder" });
+  const band = (W - m.l - m.r) / cyls.length;
+  const bw = Math.min(24, band * 0.5);
+  const Y = (v) => m.t + (1 - v / maxV) * (H - m.t - m.b);
+  svg.append(sv("line", { x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, stroke: "var(--line-strong)" }));
+  const fig = h("figure", { class: "chart" });
+  const tip = h("div", { class: "tip", hidden: true });
+  cyls.forEach((c, i) => {
+    const v = vals[i];
+    const cx = m.l + band * i + band / 2;
+    const y = Y(v), x = cx - bw / 2, base = H - m.b;
+    const color = i === top && v > 0 ? "var(--accent)" : "var(--mark-muted)";
+    if (v > 0) {
+      const r = Math.min(4, base - y);
+      svg.append(sv("path", { d: `M${x},${base}V${y + r}Q${x},${y} ${x + r},${y}H${x + bw - r}Q${x + bw},${y} ${x + bw},${y + r}V${base}Z`, fill: color }));
+    }
+    const vt = sv("text", { x: cx, y: (v > 0 ? y : base) - 6, "text-anchor": "middle", fill: "var(--ink)", "font-size": 13, "font-weight": 600 }); vt.textContent = nf(v);
+    const lt = sv("text", { x: cx, y: H - 8, "text-anchor": "middle", fill: "var(--muted)", "font-size": 12 }); lt.textContent = `Cyl ${c}`;
+    const hit = sv("rect", { x: cx - band / 2, y: 0, width: band, height: H, fill: "transparent", tabindex: "0" });
+    const show = () => { tip.replaceChildren(h("div", { class: "tv", text: `${nf(v)} misfires` }), h("div", { class: "muted", text: `Cylinder ${c}, this drive. Average of recent drives: ${nf(per[c].average || 0)}` })); tip.hidden = false; tip.style.left = `${Math.min(cx / W * svg.clientWidth, fig.clientWidth - 200)}px`; tip.style.top = "8px"; };
+    hit.addEventListener("pointerenter", show); hit.addEventListener("focus", show);
+    hit.addEventListener("pointerleave", () => { tip.hidden = true; }); hit.addEventListener("blur", () => { tip.hidden = true; });
+    svg.append(vt, lt, hit);
+  });
+  fig.append(svg, tip, h("table", { class: "t sr" }, h("tbody", {}, cyls.map((c, i) => h("tr", {}, h("td", { text: `Cylinder ${c}` }), h("td", { text: vals[i] }))))));
+  return fig;
+}
+
+/* ------------------------------------------------------------------ TRENDS tab */
+const TREND_BANDS = { rest_v: [12.4, 12.9], crank_v: [9.8, 11.5], run_v: [13.6, 14.8], idle_trim: [-8, 8], cruise_trim: [-8, 8], coolant_max: [85, 100], wot_ve: [0.78, 0.98] };
+const TREND_ORDER = ["rest_v", "crank_v", "idle_trim", "cruise_trim", "idle_rpm_sd", "idle_throttle", "warmup_min", "km_per_l", "coolant_max", "run_v", "wot_ve", "cruise_o2s2_sd"];
+function renderTrends() {
+  const root = $("#tab-trends");
+  const t = S.trends;
+  if (!t) { root.replaceChildren(h("div", { class: "panel empty" }, h("b", { text: "Loading" }))); return; }
+  const parts = [];
+  parts.push(h("h2", {}, "What's changing", h("span", { class: "sub", text: "Recent trips compared with your car's own earlier trips." })));
+  if (t.findings.length) {
+    parts.push(h("div", { class: "panel fixlist" }, t.findings.map(f => h("article", { class: "fix trend", style: `--c:${URG[f.severity].c}` },
+      h("div", { class: "rail" }),
+      h("div", {}, h("h3", { text: f.title }), h("p", { class: "tdetail", text: f.detail }))))));
+  } else {
+    parts.push(h("div", { class: "panel empty" }, h("b", { text: t.trips.length < 6 ? "Learning your car" : "Nothing drifting" }),
+      h("span", { text: t.trips.length < 6 ? `Trends need about six trips; ${t.trips.length} logged so far.` : "Battery, fuel trims, warm-up and misfires look steady." })));
+  }
+  const charts = h("div", { class: "charts" });
+  const ch = t.charts || {};
+  if (ch.misfire) {
+    const ser = Object.entries(ch.misfire.series).sort((a, b) => a[0] - b[0]);
+    const lastVals = ser.map(([, pts]) => pts[pts.length - 1][1]);
+    const emph = lastVals.indexOf(Math.max(...lastVals));
+    const anyMis = Math.max(...lastVals) > 0;
+    charts.append(lineChart({
+      title: "Misfires per trip by cylinder", unit: "count", height: 170, emphasis: anyMis,
+      series: ser.map(([cyl, pts], i) => ({ name: `Cyl ${cyl}`, points: pts, emph: anyMis && i === emph, color: anyMis && i === emph ? "var(--accent)" : "var(--mark-muted)" })),
+      note: "From the engine computer's misfire counter",
+    }));
+  }
+  for (const key of TREND_ORDER) {
+    const c = ch[key];
+    if (!c) continue;
+    charts.append(lineChart({ title: c.label, unit: c.unit, series: [{ name: c.label, points: c.points, color: "var(--accent)" }], band: TREND_BANDS[key], note: TREND_BANDS[key] ? "Green band: healthy range" : "" }));
+  }
+  parts.push(h("h2", { text: "Trip by trip" }), charts.children.length ? charts : h("div", { class: "panel empty" }, h("span", { text: "Charts appear after two trips." })));
+  if (t.trips.length) {
+    parts.push(h("h2", { text: "Trips" }), h("div", { class: "panel scroll-x" }, h("table", { class: "t" },
+      h("thead", {}, h("tr", {}, h("th", { text: "Started" }), h("th", { class: "r", text: "Distance" }), h("th", { class: "r", text: "Time" }), h("th", { class: "r", text: "Economy" }), h("th", { text: "Codes" }), h("th", { text: "" }))),
+      h("tbody", {}, [...t.trips].reverse().slice(0, 40).map(tr => h("tr", {},
+        h("td", { text: dlong(tr.start_ts) }), h("td", { class: "r", text: `${nf(tr.km, 1)} km` }), h("td", { class: "r", text: `${nf(tr.duration_min)} min` }),
+        h("td", { class: "r", text: tr.km_per_l ? `${nf(tr.km_per_l, 1)} km/L` : "–" }), h("td", { text: (tr.codes || []).join(", ") || "–" }),
+        h("td", {}, DEMO ? null : h("a", { href: `api/export.csv?trip=${tr.id}&t=${encodeURIComponent(S.token)}`, text: "CSV", download: `trip-${tr.id}.csv` }))))))));
+  }
+  root.replaceChildren(...parts);
+}
+
+/* ------------------------------------------------------------------ SERVICE tab */
+const SVC_STATE = { overdue: ["var(--serious)", "Overdue"], due_soon: ["var(--warn)", "Due soon"], ok: ["var(--good)", "OK"], unknown: ["var(--lamp-off)", "Not recorded yet"] };
+function renderService() {
+  const root = $("#tab-service");
+  const svc = S.report && S.report.service;
+  if (!svc) { root.replaceChildren(h("div", { class: "panel empty" }, h("b", { text: "Loading" }))); return; }
+  const odo = h("div", { class: "panel pad odo" },
+    h("div", {}, h("div", { class: "ink2", text: "Odometer" }), h("div", { class: "big", text: svc.odometer_km ? `${nf(svc.odometer_km)} km` : "Not set" }),
+      h("div", { class: "based", text: svc.odometer_km ? "Your last reading plus distance logged since." : "Enter it once; logged trips keep it up to date." })),
+    h("button", { class: "btn", type: "button", onclick: editOdometer }, svc.odometer_km ? "Update" : "Enter reading"));
+  const order = { overdue: 0, due_soon: 1, unknown: 2, ok: 3 };
+  const items = [...svc.items].sort((a, b) => order[a.status] - order[b.status]);
+  const list = h("div", { class: "panel" }, items.map(it => {
+    const [c, label] = SVC_STATE[it.status];
+    let used = null;
+    if (it.km_left !== null && it.interval_km) used = 1 - it.km_left / it.interval_km;
+    if (it.days_left !== null && it.interval_months) used = Math.max(used ?? 0, 1 - it.days_left / (it.interval_months * 30.44));
+    const next = [it.km_left !== null ? (it.km_left <= 0 ? `${nf(-it.km_left)} km overdue` : `${nf(it.km_left)} km left`) : null,
+      it.days_left !== null ? (it.days_left <= 0 ? `${nf(-it.days_left)} days overdue` : `${nf(it.days_left)} days left`) : null].filter(Boolean).join(", ");
+    const last = it.last_km !== null || it.last_date ? `Last done ${it.last_km !== null ? "at " + nf(it.last_km) + " km" : ""}${it.last_date ? (it.last_km !== null ? ", " : "") + new Date(it.last_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : ""}` : `Every ${nf(it.interval_km)} km or ${it.interval_months} months`;
+    return h("div", { class: "svc", style: `--c:${c}` },
+      h("div", { class: "svc-head" }, h("b", { text: it.title }), h("span", { class: "kind", style: `--c:${c}` }, h("i"), label)),
+      used !== null ? h("div", { class: "prog", role: "img", "aria-label": `${Math.round(Math.min(1, used) * 100)} percent of interval used` }, h("div", { style: `width:${Math.max(2, Math.min(100, used * 100))}%` })) : null,
+      h("div", { class: "small", text: [last, next].filter(Boolean).join(". ") }),
+      h("div", { class: "svc-actions" },
+        h("button", { class: "btn", type: "button", onclick: () => markDone(it, svc) }, "Mark as done"),
+        h("details", { class: "how" }, h("summary", {}, "Why and how", icon("chevron")), h("div", { class: "how-body" }, h("p", { text: it.why }), h("p", { text: it.how })))));
+  }));
+  root.replaceChildren(odo, h("h2", {}, "Service schedule", h("span", { class: "sub", text: "Intervals suit Nairobi traffic and dust. Change them in config.toml if your mechanic prefers others." })), list);
+}
+function editOdometer() {
+  const input = h("input", { id: "odoKm", type: "number", inputmode: "numeric", min: "0", step: "1", value: S.report.service.odometer_km ? Math.round(S.report.service.odometer_km) : "" });
+  dialog("Odometer reading", [h("label", { for: "odoKm", text: "Kilometres on the dashboard" }), input], [
+    h("button", { class: "btn", type: "button", onclick: () => $("#dlg").close() }, "Cancel"),
+    h("button", { class: "btn primary", type: "button", onclick: async () => {
+      try { await api("api/odometer", { method: "POST", body: { km: Number(input.value) } }); $("#dlg").close(); await loadReport(); renderService(); toast("Odometer saved."); }
+      catch (e) { toast(e.message); }
+    } }, "Save")]);
+}
+function markDone(it, svc) {
+  const km = h("input", { id: "svcKm", type: "number", inputmode: "numeric", min: "0", value: svc.odometer_km ? Math.round(svc.odometer_km) : "" });
+  const date = h("input", { id: "svcDate", type: "date", value: new Date(now() * 1000).toISOString().slice(0, 10) });
+  const note = h("input", { id: "svcNote", type: "text", maxlength: "200", placeholder: "e.g. Toyota 0W-20, Total station Ngong Road" });
+  dialog(`${it.title} done`, [h("label", { for: "svcKm", text: "Odometer at the time (km)" }), km, h("label", { for: "svcDate", text: "Date" }), date,
+    h("label", { for: "svcNote", text: "Note (optional)" }), note], [
+    h("button", { class: "btn", type: "button", onclick: () => $("#dlg").close() }, "Cancel"),
+    h("button", { class: "btn primary", type: "button", onclick: async () => {
+      try { await api("api/service", { method: "POST", body: { item: it.id, km: km.value, date: date.value, note: note.value } }); $("#dlg").close(); await loadReport(); renderService(); toast("Saved."); }
+      catch (e) { toast(e.message); }
+    } }, "Save")]);
+}
+
+/* ------------------------------------------------------------------ loading & live updates */
+async function loadReport() { S.report = await api("api/report"); S.lastReportTs = S.report.generated_ts; updateHeader(); }
+async function loadTrends() { S.trends = await api("api/trends"); }
+function onTick(msg) {
+  S.state = msg.state;
+  if (msg.row) { S.history.push(msg.row); if (S.history.length > 900) S.history.splice(0, S.history.length - 900); }
+  updateHeader(); updateLive(); updateDrive(); handleAlerts();
+  if (msg.report_ts && msg.report_ts !== S.lastReportTs) {
+    const tripEnded = (msg.state.events || []).some(e => e.kind === "trip_end" && e.ts > (S.lastTripEndSeen || 0));
+    loadReport().then(async () => {
+      if (tripEnded) { S.lastTripEndSeen = now(); await loadTrends(); if (S.tab === "trends") renderTrends(); }
+      if (S.tab === "fix" || S.tab === "codes" || S.tab === "service") render();
+    }).catch(() => {});
+  }
+}
+function startStream() {
+  if (DEMO) {
+    setInterval(() => {
+      demoFrame = (demoFrame + 1) % DEMO.frames.length;
+      const f = DEMO.frames[demoFrame];
+      onTick({ state: f.state, row: f.row, report_ts: DEMO.report.generated_ts });
+    }, 1000);
+    return;
+  }
+  const es = new EventSource(`api/stream?t=${encodeURIComponent(S.token)}`);
+  es.onmessage = (e) => { S.streamDown = false; try { onTick(JSON.parse(e.data)); } catch (err) { /* ignore bad frame */ } };
+  es.onerror = () => { S.streamDown = true; updateHeader(); };
+}
+async function boot() {
+  initTheme(); buildTabs();
+  $("#connPill").addEventListener("click", connectionDialog);
+  if (DEMO) {
+    const b = $("#demoBanner"); b.hidden = false;
+    b.textContent = "Preview with simulated data: four weeks of an ageing 1NZ-FE Allion. Run the monitor on your laptop, Raspberry Pi or phone to see your own car.";
+  } else {
+    initToken();
+    if (!S.token) {
+      $("#tab-fix").replaceChildren(h("div", { class: "panel empty" }, h("b", { text: "Access key missing" }),
+        h("span", { text: "Open the full link printed in the terminal when you started the monitor - it ends with ?t=..." })));
+      return;
+    }
+  }
+  try {
+    const [state, report, history, trends, symptoms] = await Promise.all([api("api/state"), api("api/report"), api("api/history?n=300"), api("api/trends"), api("api/symptoms")]);
+    S.state = state; S.report = report; S.lastReportTs = report.generated_ts; S.history = history; S.trends = trends; S.symptoms = symptoms;
+    S.picked = new Set(symptoms.active || []);
+  } catch (e) {
+    $("#tab-fix").replaceChildren(h("div", { class: "panel empty" }, h("b", { text: "Can't reach the monitor" }), h("span", { text: e.message })));
+    return;
+  }
+  updateHeader(); render(); startStream();
+  let rt = null;
+  window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { if (S.tab === "trends") renderTrends(); }, 200); });
+}
+boot();
+</script>
+</body>
+</html>
